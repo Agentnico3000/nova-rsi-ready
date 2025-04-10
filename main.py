@@ -15,29 +15,36 @@ def get_rsi(symbol, period=14):
     avg_loss = loss.rolling(window=period).mean()
 
     rs = avg_gain / avg_loss
-    rsi_value = 100 - (100 / (1 + rs))
+    rsi = 100 - (100 / (1 + rs))
 
-    return rsi_value.iloc[-1]  # This was missing before
+    # Get the last RSI value safely as a float
+    return rsi.iloc[-1].item()
 
 @app.route('/run', methods=['POST'])
 def run_bot():
+    symbol = request.json.get('symbol', '').upper()
+
     try:
-        data = request.json
-        symbol = data.get('symbol', '').upper()
         rsi_value = get_rsi(symbol)
 
         if rsi_value < 30:
-            return jsonify({
-                "status": "executed",
-                "message": f"Buy executed on {symbol}. RSI: {round(rsi_value, 2)}"
-            })
+            status = "executed"
+            message = f"Buy executed on {symbol}. RSI: {round(rsi_value, 2)}"
         else:
-            return jsonify({
-                "status": "no_trade",
-                "message": f"No trade. RSI for {symbol} is {round(rsi_value, 2)}"
-            })
+            status = "no_trade"
+            message = f"No trade. RSI for {symbol} is {round(rsi_value, 2)}"
+
+        return jsonify({
+            "symbol": symbol,
+            "rsi": round(rsi_value, 2),
+            "status": status,
+            "message": message
+        })
+
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({
+            "error": str(e)
+        })
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
