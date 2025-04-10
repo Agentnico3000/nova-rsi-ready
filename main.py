@@ -8,8 +8,10 @@ def calculate_rsi(data, period=14):
     delta = data['Close'].diff()
     gain = delta.where(delta > 0, 0.0)
     loss = -delta.where(delta < 0, 0.0)
+
     avg_gain = gain.rolling(window=period).mean()
     avg_loss = loss.rolling(window=period).mean()
+
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
     return rsi
@@ -23,7 +25,7 @@ def run_rsi():
         rsi_series = calculate_rsi(data)
         latest_rsi = round(rsi_series.dropna().iloc[-1], 2)
 
-        if rsi.item() < 30:
+        if latest_rsi < 30:
             action = "BUY (RSI below 30)"
         elif latest_rsi > 70:
             action = "SELL (RSI above 70)"
