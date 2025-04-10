@@ -4,42 +4,40 @@ import os
 
 app = Flask(__name__)
 
-def calculate_rsi(data, period=14):
+def get_rsi(symbol, period=14):
+    data = yf.download(symbol, period='30d', interval='1d')
     delta = data['Close'].diff()
-    gain = delta.where(delta > 0, 0.0)
-    loss = -delta.where(delta < 0, 0.0)
+
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
 
     avg_gain = gain.rolling(window=period).mean()
     avg_loss = loss.rolling(window=period).mean()
 
     rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
+    rsi_value = 100 - (100 / (1 + rs))
+
+    return rsi_value.iloc[-1]  # This was missing before
 
 @app.route('/run', methods=['POST'])
-def run_rsi():
+def run_bot():
     try:
-        content = request.get_json()
-        symbol = content.get("symbol", "AAPL").upper()
-        data = yf.download(symbol, period="30d", interval="1d")
-        rsi_series = calculate_rsi(data)
-        latest_rsi = round(rsi_series.dropna().iloc[-1], 2)
+        data = request.json
+        symbol = data.get('symbol', '').upper()
+        rsi_value = get_rsi(symbol)
 
-        if latest_rsi < 30:
-            action = "BUY (RSI below 30)"
-        elif latest_rsi > 70:
-            action = "SELL (RSI above 70)"
+        if rsi_value < 30:
+            return jsonify({
+                "status": "executed",
+                "message": f"Buy executed on {symbol}. RSI: {round(rsi_value, 2)}"
+            })
         else:
-            action = "HOLD (RSI neutral)"
-
-        return jsonify({
-            "symbol": symbol,
-            "latest_rsi": latest_rsi,
-            "action": action
-        })
-
+            return jsonify({
+                "status": "no_trade",
+                "message": f"No trade. RSI for {symbol} is {round(rsi_value, 2)}"
+            })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
