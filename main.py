@@ -23,7 +23,7 @@ def run_rsi():
         rsi_series = calculate_rsi(data)
         latest_rsi = round(rsi_series.dropna().iloc[-1], 2)
 
-        if latest_rsi < 30:
+        if rsi.item() < 30:
             action = "BUY (RSI below 30)"
         elif latest_rsi > 70:
             action = "SELL (RSI above 70)"
